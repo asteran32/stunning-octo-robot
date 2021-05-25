@@ -20,6 +20,7 @@ func RunAPI(add string) {
 	opcua := r.Group("/opcua")
 	{
 		opcua.Any("/client", service.ReadOPC)
+		opcua.GET("/csv", service.ReadCSV)
 	}
 
 	r.Run(add)

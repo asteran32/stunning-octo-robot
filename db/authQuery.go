@@ -17,9 +17,8 @@ var ErrINVALIDEMAIL = errors.New("Already account associated")
 // UserSignIn is compare email(id) and password when login page
 func UserSignIn(email, password string) (model.User, error) {
 	if UserClient == nil {
-		dbConnect()
+		dbConnect("user")
 	}
-	// collection := Client.Database("testApp").Collection("user")
 	ctx, cancle := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancle()
 
@@ -42,7 +41,7 @@ func UserSignIn(email, password string) (model.User, error) {
 //UserSignUp is add new user info
 func UserSignUp(user model.User) error {
 	if UserClient == nil {
-		getDBConfig()
+		dbConnect("user")
 	}
 	ctx, cancle := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancle()

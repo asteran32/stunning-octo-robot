@@ -12,14 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Server struct {
-	Server []DBConfig `json:"server"`
-}
-
-type PLC struct {
-	Plc []DBConfig `json:"plc"`
-}
-
 type DBConfig struct {
 	URL        string `json:url`
 	Username   string `json:username`
@@ -31,10 +23,20 @@ type DBConfig struct {
 var UserClient *mongo.Client
 var UserCollection *mongo.Collection
 
+var PlcClient *mongo.Client
+var PlcCollection *mongo.Collection
+
 // opt : server => main plc => edge
-func getDBConfig() (DBConfig, error) {
+func getDBConfig(opt string) (DBConfig, error) {
 	var dbCof DBConfig
-	conf, err := os.Open("dbConfig.json")
+	var fname string
+	switch opt {
+	case "plc":
+		fname = "opcDBconfig.json"
+	case "user":
+		fname = "dbConfig.json"
+	}
+	conf, err := os.Open(fname)
 	if err != nil {
 		return dbCof, err
 	}
@@ -43,24 +45,32 @@ func getDBConfig() (DBConfig, error) {
 	return dbCof, nil
 }
 
-func dbConnect() {
+func dbConnect(opt string) {
 	ctx, cancle := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancle()
 
-	conf, err := getDBConfig()
+	conf, err := getDBConfig(opt)
 	if err != nil {
 		log.Fatal("DB Err:", err)
 	}
 
-	UserClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.URL).SetAuth((options.Credential{
-		Username: conf.Username,
-		Password: conf.Password,
-	})))
+	switch opt {
+	case "plc":
+		PlcClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.URL))
+		if err != nil {
+			log.Fatal("DB Err:", err)
+		}
+		PlcCollection = PlcClient.Database(conf.Database).Collection(conf.Collection)
 
-	if err != nil {
-		log.Fatal("DB Err:", err)
+	case "user":
+		UserClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.URL).SetAuth((options.Credential{
+			Username: conf.Username,
+			Password: conf.Password,
+		})))
+		if err != nil {
+			log.Fatal("DB Err:", err)
+		}
+		UserCollection = UserClient.Database(conf.Database).Collection(conf.Collection)
+
 	}
-	UserCollection = UserClient.Database(conf.Database).Collection(conf.Collection)
-
-	log.Println("Success to Connect MonogDB")
 }

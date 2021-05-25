@@ -5,4 +5,4 @@
 *.json
 
 # opcua client 
-/service/opc*.go
+# /service/opc*.go
