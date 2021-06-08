@@ -2,6 +2,7 @@ package route
 
 import (
 	"app/service"
+	"log"
 
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -13,15 +14,16 @@ func RunAPI(add string) {
 
 	api := r.Group("/api")
 	{
-		api.POST("/auth/signin", service.SignIn) //login
-		api.POST("/auth/signup", service.SignUp) //register
+		api.POST("/auth/signin", service.SignIn)   //login
+		api.POST("/auth/signup", service.SignUp)   //register
+		api.GET("/test/user", service.VerifyToken) //
 	}
 
 	opcua := r.Group("/opcua")
 	{
-		opcua.Any("/client", service.ReadOPC)
-		opcua.GET("/csv", service.ReadCSV)
+		opcua.Any("/client", service.ReadOPC) //opcua websocket
+		opcua.GET("/csv", service.ReadCSV)    //opcua plc nuc database connect
 	}
 
-	r.Run(add)
+	log.Fatal(r.Run(add))
 }
