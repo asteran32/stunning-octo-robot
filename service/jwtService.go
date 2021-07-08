@@ -125,7 +125,7 @@ func VerifyAccessToken(tokenStr string) error {
 	return nil
 }
 
-func DeleteToken(tokenStr string) error {
+func DeleteAccessToken(tokenStr string) error {
 	details, err := extractedMetadata(tokenStr, "access_token")
 	if err != nil {
 		return err
@@ -138,21 +138,20 @@ func DeleteToken(tokenStr string) error {
 	return nil
 }
 
-func VerifyRefreshToken(tokenStr string) error {
+func VerifyRefreshToken(tokenStr string) (map[string]string, error) {
 	details, err := extractedMetadata(tokenStr, "refresh_token")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Delete the previous Refresh Token
 	_, err = redis.Deletekey(details["Refresh_uuid"])
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Create new pairs of refresh and access tokens and Set the tokens metadata to redis
-	_, err = GenerateJWT(details["Id"])
+	tokens, err := GenerateJWT(details["Id"])
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	return tokens, nil
 }

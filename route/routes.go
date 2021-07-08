@@ -16,7 +16,8 @@ func RunAPI(add string) {
 	{
 		api.POST("/auth/signin", service.SignIn) //login
 		api.POST("/auth/signup", service.SignUp) //register
-		api.POST("/auth/user", service.User)     //
+		api.POST("/auth/signout", service.SignOut)
+		api.POST("/auth/user", service.User) //
 		api.POST("/token/refresh", service.Refresh)
 	}
 

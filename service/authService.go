@@ -65,7 +65,7 @@ func SignOut(c *gin.Context) {
 		return
 	}
 	// Delete Access token
-	if err := DeleteToken(extracted[1]); err != nil {
+	if err := DeleteAccessToken(extracted[1]); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
@@ -101,9 +101,10 @@ func Refresh(c *gin.Context) {
 	}
 	//
 	refreshToken := mapToken["refresh_token"]
-	if err := VerifyRefreshToken(refreshToken); err != nil {
+	tokens, err := VerifyRefreshToken(refreshToken)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "refresh token is expired"})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "success refresh"})
+	c.JSON(http.StatusCreated, tokens)
 }
