@@ -4,7 +4,6 @@ import (
 	"app/model"
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -17,7 +16,7 @@ var ErrINVALIDEMAIL = errors.New("Already account associated")
 // UserSignIn is compare email(id) and password when login page
 func UserSignIn(email, password string) (model.User, error) {
 	if UserClient == nil {
-		dbConnect("user")
+		getConnection()
 	}
 	ctx, cancle := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancle()
@@ -41,7 +40,7 @@ func UserSignIn(email, password string) (model.User, error) {
 //UserSignUp is add new user info
 func UserSignUp(user model.User) error {
 	if UserClient == nil {
-		dbConnect("user")
+		getConnection()
 	}
 	ctx, cancle := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancle()
@@ -67,10 +66,7 @@ func UserSignUp(user model.User) error {
 	if err != nil {
 		return err
 	}
-
-	log.Println("Inserted New User into User Collection!")
 	return nil
-
 }
 
 // Check the password is correct or not.

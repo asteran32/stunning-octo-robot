@@ -59,12 +59,13 @@ func LoadClientApp(write chan []byte, read chan []byte, path string) {
 
 	for i := 0; i < len(config.Server); i++ {
 		log.Printf("Start Monitoring OPC UA Server : %v .. \n", config.Server[i].Endpoint)
-		sc := ServerConfig{Endpoint: config.Server[i].Endpoint,
-			Policy: config.Server[i].Policy,
-			Mode:   config.Server[i].Mode,
-			Cert:   config.Server[i].Cert,
-			Key:    config.Server[i].Key,
-			NodeID: config.Server[i].NodeID}
+		sc := ServerConfig{
+			Endpoint: config.Server[i].Endpoint,
+			Policy:   config.Server[i].Policy,
+			Mode:     config.Server[i].Mode,
+			Cert:     config.Server[i].Cert,
+			Key:      config.Server[i].Key,
+			NodeID:   config.Server[i].NodeID}
 		app.opcuaClient(&sc)
 	}
 

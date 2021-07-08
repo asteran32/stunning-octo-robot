@@ -14,15 +14,15 @@ func RunAPI(add string) {
 
 	api := r.Group("/api")
 	{
-		api.POST("/auth/signin", service.SignIn)   //login
-		api.POST("/auth/signup", service.SignUp)   //register
-		api.GET("/test/user", service.VerifyToken) //
+		api.POST("/auth/signin", service.SignIn) //login
+		api.POST("/auth/signup", service.SignUp) //register
+		api.POST("/auth/user", service.User)     //
+		api.POST("/token/refresh", service.Refresh)
 	}
 
 	opcua := r.Group("/opcua")
 	{
 		opcua.Any("/client", service.ReadOPC) //opcua websocket
-		opcua.GET("/csv", service.ReadCSV)    //opcua plc nuc database connect
 	}
 
 	log.Fatal(r.Run(add))

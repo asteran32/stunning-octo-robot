@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"time"
 
@@ -13,30 +13,19 @@ import (
 )
 
 type DBConfig struct {
-	URL        string `json:url`
-	Username   string `json:username`
-	Password   string `json:password`
-	Database   string `json:database`
-	Collection string `json:collection`
+	Url string `json:url`
+	Db  string `json:db`
+	Col string `json:collection`
 }
 
 var UserClient *mongo.Client
 var UserCollection *mongo.Collection
 
-var PlcClient *mongo.Client
-var PlcCollection *mongo.Collection
-
 // opt : server => main plc => edge
-func getDBConfig(opt string) (DBConfig, error) {
+func DbInit() (DBConfig, error) {
 	var dbCof DBConfig
-	var fname string
-	switch opt {
-	case "plc":
-		fname = "opcDBconfig.json"
-	case "user":
-		fname = "dbConfig.json"
-	}
-	conf, err := os.Open(fname)
+
+	conf, err := os.Open("dbConfig.json")
 	if err != nil {
 		return dbCof, err
 	}
@@ -45,32 +34,19 @@ func getDBConfig(opt string) (DBConfig, error) {
 	return dbCof, nil
 }
 
-func dbConnect(opt string) {
+func getConnection() error {
 	ctx, cancle := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancle()
 
-	conf, err := getDBConfig(opt)
+	conf, err := DbInit()
 	if err != nil {
-		log.Fatal("DB Err:", err)
+		return fmt.Errorf("DB Err : %v", err)
 	}
-
-	switch opt {
-	case "plc":
-		PlcClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.URL))
-		if err != nil {
-			log.Fatal("DB Err:", err)
-		}
-		PlcCollection = PlcClient.Database(conf.Database).Collection(conf.Collection)
-
-	case "user":
-		UserClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.URL).SetAuth((options.Credential{
-			Username: conf.Username,
-			Password: conf.Password,
-		})))
-		if err != nil {
-			log.Fatal("DB Err:", err)
-		}
-		UserCollection = UserClient.Database(conf.Database).Collection(conf.Collection)
-
+	UserClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.Url))
+	if err != nil {
+		return fmt.Errorf("DB Err : %v", err)
 	}
+	UserCollection = UserClient.Database("testApp").Collection("user")
+
+	return nil
 }

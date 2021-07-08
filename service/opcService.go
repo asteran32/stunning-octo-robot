@@ -1,10 +1,8 @@
 package service
 
 import (
-	"app/db"
 	"app/opcua"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -131,13 +129,4 @@ func ReadOPC(c *gin.Context) {
 	go client.streamReader()
 	go client.streamWriter()
 
-}
-
-func ReadCSV(c *gin.Context) {
-	csvlist, err := db.GetCSVList()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, csvlist)
 }

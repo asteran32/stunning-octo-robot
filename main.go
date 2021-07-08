@@ -1,16 +1,12 @@
 package main
 
 import (
-	"app/redis"
 	"app/route"
 	"log"
 )
 
 func main() {
-	log.Print("Start server")
-	// DB init
-	// Redis init
-	redis.Init()
+	log.Print("Starting Go gin server Port :8080")
 	// Run
 	route.RunAPI(":8080")
 }
