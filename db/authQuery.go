@@ -15,15 +15,17 @@ var ErrINVALIDEMAIL = errors.New("Already account associated")
 
 // UserSignIn is compare email(id) and password when login page
 func UserSignIn(email, password string) (model.User, error) {
-	if UserClient == nil {
-		getConnection()
+	var dbUser model.User
+	client, err := getConnection()
+	if err != nil {
+		return dbUser, err
 	}
-	ctx, cancle := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancle()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	defer client.Disconnect(ctx)
 
 	// Check email
-	var dbUser model.User
-	err := UserCollection.FindOne(ctx, bson.M{"email": email}).Decode(&dbUser)
+	userCollection := client.Database("testApp").Collection("user")
+	err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&dbUser)
 	if err != nil {
 		return dbUser, err
 	}
@@ -39,15 +41,17 @@ func UserSignIn(email, password string) (model.User, error) {
 
 //UserSignUp is add new user info
 func UserSignUp(user model.User) error {
-	if UserClient == nil {
-		getConnection()
+	var dbUser model.User
+	client, err := getConnection()
+	if err != nil {
+		return err
 	}
-	ctx, cancle := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancle()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	defer client.Disconnect(ctx)
 
 	// Check email(unique)
-	var dbUser model.User
-	err := UserCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&dbUser)
+	userCollection := client.Database("testApp").Collection("user")
+	err = userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&dbUser)
 	if err == nil { // exist
 		return ErrINVALIDEMAIL
 	}
@@ -57,7 +61,7 @@ func UserSignUp(user model.User) error {
 		return err
 	}
 
-	_, err = UserCollection.InsertOne(ctx, bson.D{
+	_, err = userCollection.InsertOne(ctx, bson.D{
 		{Key: "firstname", Value: user.FirstName},
 		{Key: "lastname", Value: user.LastName},
 		{Key: "email", Value: user.Email},

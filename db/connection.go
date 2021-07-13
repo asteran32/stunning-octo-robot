@@ -12,41 +12,34 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type DBConfig struct {
-	Url string `json:url`
-	Db  string `json:db`
-	Col string `json:collection`
+type Config struct {
+	URL string `json:"url"`
 }
-
-var UserClient *mongo.Client
-var UserCollection *mongo.Collection
 
 // opt : server => main plc => edge
-func DbInit() (DBConfig, error) {
-	var dbCof DBConfig
-
+func getAuth() (Config, error) {
+	var auth Config
 	conf, err := os.Open("dbConfig.json")
 	if err != nil {
-		return dbCof, err
+		return auth, err
 	}
 	byteVal, _ := ioutil.ReadAll(conf)
-	json.Unmarshal(byteVal, &dbCof)
-	return dbCof, nil
+	json.Unmarshal(byteVal, &auth)
+
+	return auth, nil
 }
 
-func getConnection() error {
-	ctx, cancle := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancle()
+func getConnection() (*mongo.Client, error) {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	conf, err := DbInit()
+	conf, err := getAuth()
 	if err != nil {
-		return fmt.Errorf("DB Err : %v", err)
+		return nil, fmt.Errorf("DB Err : %v", err)
 	}
-	UserClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.Url))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(conf.URL))
 	if err != nil {
-		return fmt.Errorf("DB Err : %v", err)
+		return nil, fmt.Errorf("DB Err : %v", err)
 	}
-	UserCollection = UserClient.Database("testApp").Collection("user")
 
-	return nil
+	return client, nil
 }
