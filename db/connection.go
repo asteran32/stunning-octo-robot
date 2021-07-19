@@ -13,7 +13,9 @@ import (
 )
 
 type Config struct {
-	URL string `json:"url"`
+	URL  string `json:"url"`
+	User string `json:"username"`
+	Pwd  string `json:"password"`
 }
 
 // opt : server => main plc => edge
@@ -31,12 +33,16 @@ func getAuth() (Config, error) {
 
 func getConnection() (*mongo.Client, error) {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-
 	conf, err := getAuth()
 	if err != nil {
 		return nil, fmt.Errorf("DB Err : %v", err)
 	}
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(conf.URL))
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(conf.URL).SetAuth((options.Credential{
+		Username: conf.User,
+		Password: conf.Pwd,
+	})))
+
 	if err != nil {
 		return nil, fmt.Errorf("DB Err : %v", err)
 	}

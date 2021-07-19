@@ -1,8 +1,5 @@
 # react production
 /client
 
-# config
+# config files
 *.json
-
-# opcua client 
-# /service/opc*.go
