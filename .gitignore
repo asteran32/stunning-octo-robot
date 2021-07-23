@@ -2,4 +2,4 @@
 /client
 
 # config files
-*.json
+dbConfig.json

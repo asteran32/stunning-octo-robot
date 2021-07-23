@@ -96,6 +96,7 @@ func (app *OpcuaClientApp) opcuaClient(config *ServerConfig) {
 		log.Fatal(err)
 	}
 
+	// error : timed out point
 	ep := opcua.SelectEndpoint(endpoints, config.Policy, ua.MessageSecurityModeFromString(config.Mode))
 	if ep == nil {
 		log.Fatal("Failed to find suitable endpoint")
