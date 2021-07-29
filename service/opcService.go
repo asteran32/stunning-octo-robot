@@ -105,15 +105,11 @@ func (c *Client) streamWriter() {
 }
 
 func ReadOPC(c *gin.Context) {
-	configFile := "plcConfig.json"
-
 	con, err := opcUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("err: Can not upgrade websocket")
 	}
 	con.EnableWriteCompression(true)
-
-	// w := &threadSafeWriter{con, sync.Mutex{}}
 
 	// create two channels for read write concurrency
 	cWrite := make(chan []byte)
@@ -121,8 +117,8 @@ func ReadOPC(c *gin.Context) {
 
 	client := &Client{conn: con, write: cWrite, read: cRead}
 
-	// run opcua client application in separate go routine
-	go opcua.LoadClientApp(cWrite, cRead, configFile)
+	// run opcua client application
+	go opcua.OpcuaClient(client.write, client.read)
 
 	// run reader and writer in two different go routines
 	// so they can act concurrently

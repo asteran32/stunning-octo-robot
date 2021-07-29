@@ -15,18 +15,11 @@ import (
 	"github.com/gopcua/opcua/ua"
 )
 
-type OpcuaClientApp struct {
-	cDatastream chan []byte
-	cCommands   chan []byte
-	configPath  string
-	debug       bool
-}
-
 type Server struct {
-	Server []ServerConfig `json:"server"`
+	Server []ServerOption `json:"server"`
 }
 
-type ServerConfig struct {
+type ServerOption struct {
 	Endpoint string   `json:"endpoint"`
 	Policy   string   `json:"policy"`
 	Mode     string   `json:"mode"`
@@ -35,45 +28,39 @@ type ServerConfig struct {
 	NodeID   []string `json:"nodeId"`
 }
 
-type opcSocketMessage struct {
-	Event string  `json:"event"`
-	Data  opcData `json:"data"`
+type OpcMsg struct {
+	Event string `json:"event"`
+	Data  Data   `json:"data"`
 }
 
-type opcData struct {
+type Data struct {
 	Time   string      `json:"time"`
 	NodeID string      `json:"nodeid"`
 	Value  interface{} `json:"value"`
 }
 
-func LoadClientApp(write chan []byte, read chan []byte, path string) {
-	app := OpcuaClientApp{cDatastream: write, cCommands: read, configPath: path, debug: false}
-
+func OpcuaClient(write chan []byte, read chan []byte) {
 	// load Opcua server config
-	byteValue, err := ioutil.ReadFile(app.configPath)
+	byteValue, err := ioutil.ReadFile("plcConfig.json")
 	if err != nil {
 		log.Printf("err: %v \n", err)
 	}
-	config := Server{}
-	json.Unmarshal(byteValue, &config)
+	oc := Server{}
+	json.Unmarshal(byteValue, &oc)
 
-	for i := 0; i < len(config.Server); i++ {
-		log.Printf("Start Monitoring OPC UA Server : %v .. \n", config.Server[i].Endpoint)
-		sc := ServerConfig{
-			Endpoint: config.Server[i].Endpoint,
-			Policy:   config.Server[i].Policy,
-			Mode:     config.Server[i].Mode,
-			Cert:     config.Server[i].Cert,
-			Key:      config.Server[i].Key,
-			NodeID:   config.Server[i].NodeID}
-		app.opcuaClient(&sc)
+	if len(oc.Server) != 1 {
+		log.Fatal("Error - - - - ")
 	}
 
-}
+	sc := ServerOption{
+		Endpoint: oc.Server[0].Endpoint,
+		Policy:   oc.Server[0].Policy,
+		Mode:     oc.Server[0].Mode,
+		Cert:     oc.Server[0].Cert,
+		Key:      oc.Server[0].Key,
+		NodeID:   oc.Server[0].NodeID}
 
-func (app *OpcuaClientApp) opcuaClient(config *ServerConfig) {
 	interval := opcua.DefaultSubscriptionInterval.String()
-
 	subInterval, err := time.ParseDuration(interval)
 	if err != nil {
 		log.Fatal(err)
@@ -91,29 +78,27 @@ func (app *OpcuaClientApp) opcuaClient(config *ServerConfig) {
 		cancel()
 	}()
 
-	endpoints, err := opcua.GetEndpoints(config.Endpoint)
+	ed, err := opcua.GetEndpoints(sc.Endpoint)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// error : timed out point
-	ep := opcua.SelectEndpoint(endpoints, config.Policy, ua.MessageSecurityModeFromString(config.Mode))
+	ep := opcua.SelectEndpoint(ed, sc.Policy, ua.MessageSecurityModeFromString(sc.Mode))
 	if ep == nil {
 		log.Fatal("Failed to find suitable endpoint")
 	}
 
-	log.Print("*", ep.SecurityPolicyURI, ep.SecurityMode)
-
 	opts := []opcua.Option{
-		opcua.SecurityPolicy(config.Policy),
-		opcua.SecurityModeString(config.Mode),
-		opcua.CertificateFile(config.Cert),
-		opcua.PrivateKeyFile(config.Key),
+		opcua.SecurityPolicy(oc.Server[0].Policy),
+		opcua.SecurityModeString(oc.Server[0].Mode),
+		opcua.CertificateFile(oc.Server[0].Cert),
+		opcua.PrivateKeyFile(oc.Server[0].Key),
 		opcua.AuthAnonymous(),
 		opcua.SecurityFromEndpoint(ep, ua.UserTokenTypeAnonymous),
 	}
 
-	c := opcua.NewClient(ep.EndpointURL, opts...)
+	// Monitoring opc ua server
+	c := opcua.NewClient(oc.Server[0].Endpoint, opts...)
 	if err := c.Connect(ctx); err != nil {
 		log.Fatal(err)
 	}
@@ -132,19 +117,18 @@ func (app *OpcuaClientApp) opcuaClient(config *ServerConfig) {
 
 	// start channel-based subscription
 	wg.Add(1)
-	go app.startChanSub(ctx, m, subInterval, 0, wg, config.NodeID[0], config.NodeID[1], config.NodeID[2], config.NodeID[3])
+	go startChanSub(ctx, m, subInterval, 0, wg, write, oc.Server[0].NodeID...)
 
 	<-ctx.Done()
 	wg.Wait()
 }
 
-func (app *OpcuaClientApp) startChanSub(ctx context.Context, m *monitor.NodeMonitor, interval, lag time.Duration, wg *sync.WaitGroup, nodes ...string) {
+func startChanSub(ctx context.Context, m *monitor.NodeMonitor, interval, lag time.Duration, wg *sync.WaitGroup, cStream chan []byte, nodes ...string) {
 	ch := make(chan *monitor.DataChangeMessage, 16)
 	sub, err := m.ChanSubscribe(ctx, &opcua.SubscriptionParameters{Interval: interval}, ch, nodes...)
 
 	if err != nil {
 		log.Fatal(err)
-		// app.cDatastream <- errMsg
 	}
 
 	defer cleanup(sub, wg)
@@ -157,16 +141,19 @@ func (app *OpcuaClientApp) startChanSub(ctx context.Context, m *monitor.NodeMoni
 			if msg.Error != nil {
 				log.Printf("[channel ] sub=%d error=%s", sub.SubscriptionID(), msg.Error)
 			} else {
-				data := opcData{Time: msg.SourceTimestamp.UTC().Format(time.RFC3339),
+				// log.Printf("[channel ] sub=%d ts=%s node=%s value=%v", sub.SubscriptionID(), msg.SourceTimestamp.UTC().Format(time.RFC3339), msg.NodeID, msg.Value.Value())
+				data := Data{
+					Time:   msg.SourceTimestamp.UTC().Format(time.RFC3339),
 					NodeID: msg.NodeID.String(),
 					Value:  msg.Value.Value(),
 				}
-				socket := opcSocketMessage{Event: "opc", Data: data}
-				opcSocketMsg, err := json.Marshal(socket)
+				opcMsg, err := json.Marshal(OpcMsg{
+					Event: "opc",
+					Data:  data})
 				if err != nil {
-					log.Println("err: Can not convert interface to Json format.")
+					log.Printf("[err ] json error : %s", err)
 				}
-				app.cDatastream <- opcSocketMsg
+				cStream <- opcMsg
 			}
 			time.Sleep(lag)
 		}
